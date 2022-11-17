@@ -34,16 +34,26 @@ reg gas_r;
 reg brake_r;
 reg [7:0] speed_buff;
 reg [7:0] following_distance_buff;
-reg [7:0] sensor_data_avg_r;
-reg [7:0] sensor_data_flow [2:0];
+//reg [7:0] sensor_data_avg_r;
+reg [7:0] sensor_data_flow [3:0];
+reg [1:0] state_fmd;
+reg [7:0] sensor_measured_data_r;
 
 //wire [1:0] sensor_data;
+wire [7:0] sensor_data_diff;
+wire [7:0] sensor_data_avg_w;
+wire [7:0] sensor_data_avg;
 
 //assign sensor_data = {redlight_i, };
 assign gas_o = gas_r;
 assign brake_o = brake_r;
+assign sensor_data_diff = distance_cam_i - distance_lidar_i;
+assign sensor_data_avg_w = (distance_cam_i + distance_lidar_i) / 2;
+assign sensor_data_avg = (sensor_data_diff>20) ? 
+                        distance_lidar_i : sensor_data_avg_w
 
-// gas&brake controller
+
+// gas & brake controller
 always(posedge clk) begin
     if(~rst_n) begin
         /* autonomous */
@@ -121,15 +131,48 @@ end
 /* following_measured_distance */
 always(posedge clk) begin
     if(~rst_n) begin
-
+        sensor_data_flow <= 0;
+        state_fmd <= 2'b00;
+        sensor_measured_data_r <= 8'b0;
     end
     else if(timer_trick_i) begin
-        if()
-        sensor_data_avg_r <= (distance_cam_i + distance_lidar_i) / 2; 
-        sensor_data_flow[0] <= sensor_data_avg_r
+        case(state_fmd)
+            2'b00: begin
+                sensor_data_flow[0] <= sensor_data_avg;
+                sensor_measured_data_r <=  (sensor_data_flow[1] + sensor_data_flow[2] + 
+                    sensor_data_flow[3] + sensor_data_avg) / 3;
+                state_fmd <= 2'b01;
+            end
+            2'b01: begin
+                sensor_data_flow[1] <= sensor_data_avg;
+                sensor_measured_data_r <=  (sensor_data_flow[0] + sensor_data_flow[2] + 
+                    sensor_data_flow[3] + sensor_data_avg) / 3;
+                state_fmd <= 2'b10;
+            end
+            2'b10: begin
+                sensor_data_flow[2] <= sensor_data_avg;
+                sensor_measured_data_r <=  (sensor_data_flow[0] + sensor_data_flow[1] + 
+                    sensor_data_flow[3] + sensor_data_avg) / 3;
+                state_fmd <= 2'b11;
+            end
+            2'b11: begin
+                sensor_data_flow[2] <= sensor_data_avg;
+                sensor_measured_data_r <=  (sensor_data_flow[0] + sensor_data_flow[1] + 
+                    sensor_data_flow[2] + sensor_data_avg) / 3;
+                state_fmd <= 2'b00;
+            end
+            default: begin
+                sensor_data_flow <= 0;
+                state_fmd <= 2'b00;
+                sensor_measured_data_r <= 8'b0;
+            end
+
+        endcase
     end
     else begin
-
+            sensor_data_flow <= sensor_data_flow;
+            state_fmd <= state_fmd;
+            sensor_measured_data_r <= sensor_measured_data_r;
     end
 end
 
