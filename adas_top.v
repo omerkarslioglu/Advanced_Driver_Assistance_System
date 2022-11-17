@@ -34,6 +34,8 @@ reg gas_r;
 reg brake_r;
 reg [7:0] speed_buff;
 reg [7:0] following_distance_buff;
+reg [7:0] sensor_data_avg_r;
+reg [7:0] sensor_data_flow [2:0];
 
 //wire [1:0] sensor_data;
 
@@ -48,7 +50,7 @@ always(posedge clk) begin
         gas_r <= 1'b0;
         brake_r <= 1'b0;
     end
-    else if(timer_trick_i && mode_i) begin
+    else if(timer_trick_i) begin
         case(mode_i)
             autonomous: begin
                 if(speed_measured_i > speed_buff) begin
@@ -116,8 +118,19 @@ always(posedge clk) begin
     end
 end
 
+/* following_measured_distance */
 always(posedge clk) begin
-    if()
+    if(~rst_n) begin
+
+    end
+    else if(timer_trick_i) begin
+        if()
+        sensor_data_avg_r <= (distance_cam_i + distance_lidar_i) / 2; 
+        sensor_data_flow[0] <= sensor_data_avg_r
+    end
+    else begin
+
+    end
 end
 
 
