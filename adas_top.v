@@ -1,30 +1,30 @@
 module adas_top
 (
     // default inputs
-    input clk;
-    input rst_n;
+    input clk,
+    input rst_n,
 
     // from car
-    input timer_trick_i;
-    input mode_i;                   // (1) auto mode - (0) assist mode
-    input [1:0] redlight_i;         // (1) lidar - (0) camera
-    input [1:0] crosswall_i;
-    input [7:0] distance_lidar_i;
-    input [7:0] distance_cam_i;
-    input [7:0] speed_measured_i;
+    input timer_trick_i,
+    input mode_i,                   // (1) auto mode - (0) assist mode
+    input [1:0] redlight_i,         // (1) lidar - (0) camera
+    input [1:0] crosswall_i,
+    input [7:0] distance_lidar_i,
+    input [7:0] distance_cam_i,
+    input [7:0] speed_measured_i,
 
     // from user
-    input [7:0] following_distance_i;
-    input [7:0] speed_i;
+    input [7:0] following_distance_i,
+    input [7:0] speed_i,
 
     // autonom
-    output gas_o;
-    output brake_o;
+    output gas_o,
+    output brake_o,
 
     // assistance
-    output redlight_o;
-    output crosswall_o;
-    output following_distance_o;
+    output redlight_o,
+    output crosswall_o,
+    output [7:0] following_distance_o
 );
 
 localparam assistance = 1'b0;
@@ -50,14 +50,14 @@ assign brake_o = brake_r;
 assign sensor_data_diff = distance_cam_i - distance_lidar_i;
 assign sensor_data_avg_w = (distance_cam_i + distance_lidar_i) / 2;
 assign sensor_data_avg = (sensor_data_diff>20) ? 
-                        distance_lidar_i : sensor_data_avg_w
+                        distance_lidar_i : sensor_data_avg_w;
 assign following_distance_o = sensor_measured_data_r;
 assign redlight_o = redlight_i[0] & redlight_i[1];
-assign crosswall_o = crosswall_i[0] & crosswall_o[1];
+assign crosswall_o = crosswall_i[0] & crosswall_i[1];
 
 
 // gas & brake controller
-always(posedge clk) begin
+always @(posedge clk) begin
     if(~rst_n) begin
         /* autonomous */
         gas_r <= 1'b0;
@@ -78,7 +78,7 @@ always(posedge clk) begin
                     end
                     /*
                     else if(following_distance_i < sensor_measured_data_r) begin
-                        /* increase speed
+                        // increase speed
                         gas_r <= 1'b1;
                         brake_r <= 1'b0;                    
                     end
@@ -125,7 +125,7 @@ always(posedge clk) begin
 end
 
 /* speed & following_distance that will be using in auto mode */
-always(posedge clk) begin
+always @(posedge clk) begin
     if(~rst_n) begin
         speed_buff <= 'd100; 
         following_distance_buff <= 'd50;
@@ -168,9 +168,12 @@ always(posedge clk) begin
 end
 
 /* following_measured_distance */
-always(posedge clk) begin
+always @(posedge clk) begin
     if(~rst_n) begin
-        sensor_data_flow <= 0;
+        sensor_data_flow[0] <= 8'b0;
+        sensor_data_flow[1] <= 8'b0;
+        sensor_data_flow[2] <= 8'b0;
+        sensor_data_flow[3] <= 8'b0;
         state_fmd <= 2'b00;
         sensor_measured_data_r <= 8'b0;
     end
@@ -201,7 +204,10 @@ always(posedge clk) begin
                 state_fmd <= 2'b00;
             end
             default: begin
-                sensor_data_flow <= 0;
+                sensor_data_flow[0] <= 8'b0;
+                sensor_data_flow[1] <= 8'b0;
+                sensor_data_flow[2] <= 8'b0;
+                sensor_data_flow[3] <= 8'b0;
                 state_fmd <= 2'b00;
                 sensor_measured_data_r <= 8'b0;
             end
@@ -209,7 +215,10 @@ always(posedge clk) begin
         endcase
     end
     else begin
-            sensor_data_flow <= sensor_data_flow;
+            sensor_data_flow[0] <= sensor_data_flow[0];
+            sensor_data_flow[1] <= sensor_data_flow[1];
+            sensor_data_flow[2] <= sensor_data_flow[2];
+            sensor_data_flow[3] <= sensor_data_flow[3];
             state_fmd <= state_fmd;
             sensor_measured_data_r <= sensor_measured_data_r;
     end
