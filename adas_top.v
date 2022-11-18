@@ -51,6 +51,9 @@ assign sensor_data_diff = distance_cam_i - distance_lidar_i;
 assign sensor_data_avg_w = (distance_cam_i + distance_lidar_i) / 2;
 assign sensor_data_avg = (sensor_data_diff>20) ? 
                         distance_lidar_i : sensor_data_avg_w
+assign following_distance_o = sensor_measured_data_r;
+assign redlight_o = redlight_i[0] & redlight_i[1];
+assign crosswall_o = crosswall_i[0] & crosswall_o[1];
 
 
 // gas & brake controller
@@ -64,16 +67,52 @@ always(posedge clk) begin
         case(mode_i)
             autonomous: begin
                 if(speed_measured_i > speed_buff) begin
-                    gas_r <= 1'b0;
-                    brake_r <= 1'b1; 
+                        gas_r <= 1'b0;
+                        brake_r <= 1'b1;
                 end
                 else if(speed_measured_i < speed_buff) begin
-                    gas_r <= 1'b1;
-                    brake_r <= 1'b0; 
+                    if(following_distance_i > sensor_measured_data_r) begin
+                        /* decrase speed */
+                        gas_r <= 1'b0;
+                        brake_r <= 1'b1;
+                    end
+                    /*
+                    else if(following_distance_i < sensor_measured_data_r) begin
+                        /* increase speed
+                        gas_r <= 1'b1;
+                        brake_r <= 1'b0;                    
+                    end
+                    */
+                    else if(following_distance_i == sensor_measured_data_r) begin
+                        /* constant speed */
+                        gas_r <= 1'b1;
+                        brake_r <= 1'b1;
+                    end
+                    else begin
+                        /* increase speed */
+                        gas_r <= 1'b1;
+                        brake_r <= 1'b0; 
+                    end                     
                 end
                 else if(speed_measured_i == speed_buff) begin
-                    gas_r <= 1'b1;
-                    brake_r <= 1'b1;     
+                    if(following_distance_i > sensor_measured_data_r) begin
+                        gas_r <= 1'b0;
+                        brake_r <= 1'b1;
+                    end
+                    /*
+                    else if(following_distance_i < sensor_measured_data_r) begin
+                        gas_r <= 1'b1;
+                        brake_r <= 1'b1; 
+                    end
+                    else if(following_distance_i == sensor_measured_data_r) begin
+                        gas_r <= 1'b1;
+                        brake_r <= 1'b1; 
+                    end
+                    */
+                    else begin
+                        gas_r <= 1'b1;
+                        brake_r <= 1'b1; 
+                    end                    
                 end
             end
             assistance: begin 
